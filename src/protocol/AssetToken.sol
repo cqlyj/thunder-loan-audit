@@ -1,13 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.20;
 
-import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 contract AssetToken is ERC20 {
     error AssetToken__onlyThunderLoan();
-    error AssetToken__ExhangeRateCanOnlyIncrease(uint256 oldExchangeRate, uint256 newExchangeRate);
+    error AssetToken__ExhangeRateCanOnlyIncrease(
+        uint256 oldExchangeRate,
+        uint256 newExchangeRate
+    );
     error AssetToken__ZeroAddress();
 
     using SafeERC20 for IERC20;
@@ -21,6 +24,8 @@ contract AssetToken is ERC20 {
     // The underlying per asset exchange rate
     // ie: s_exchangeRate = 2
     // means 1 asset token is worth 2 underlying tokens
+
+    // q what dose this rate do??
     uint256 private s_exchangeRate;
     uint256 public constant EXCHANGE_RATE_PRECISION = 1e18;
     uint256 private constant STARTING_EXCHANGE_RATE = 1e18;
@@ -73,7 +78,13 @@ contract AssetToken is ERC20 {
         _burn(account, amount);
     }
 
-    function transferUnderlyingTo(address to, uint256 amount) external onlyThunderLoan {
+    function transferUnderlyingTo(
+        address to,
+        uint256 amount
+    ) external onlyThunderLoan {
+        // q wired ERC20 tokens?
+        // what happends if USDC blacklist the thunderloan address?
+        // what happends if USDC blacklist the asset token address?
         i_underlying.safeTransfer(to, amount);
     }
 
@@ -82,14 +93,23 @@ contract AssetToken is ERC20 {
         // 2. How big the fee is should be divided by the total supply
         // 3. So if the fee is 1e18, and the total supply is 2e18, the exchange rate be multiplied by 1.5
         // if the fee is 0.5 ETH, and the total supply is 4, the exchange rate should be multiplied by 1.125
+
+        // INVARIANT!!!!
         // it should always go up, never down
         // newExchangeRate = oldExchangeRate * (totalSupply + fee) / totalSupply
         // newExchangeRate = 1 (4 + 0.5) / 4
         // newExchangeRate = 1.125
-        uint256 newExchangeRate = s_exchangeRate * (totalSupply() + fee) / totalSupply();
+
+        // q what if totalSupply is 0?
+        // @audit-gas too many storage reads
+        uint256 newExchangeRate = (s_exchangeRate * (totalSupply() + fee)) /
+            totalSupply();
 
         if (newExchangeRate <= s_exchangeRate) {
-            revert AssetToken__ExhangeRateCanOnlyIncrease(s_exchangeRate, newExchangeRate);
+            revert AssetToken__ExhangeRateCanOnlyIncrease(
+                s_exchangeRate,
+                newExchangeRate
+            );
         }
         s_exchangeRate = newExchangeRate;
         emit ExchangeRateUpdated(s_exchangeRate);
