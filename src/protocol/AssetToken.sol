@@ -25,7 +25,8 @@ contract AssetToken is ERC20 {
     // ie: s_exchangeRate = 2
     // means 1 asset token is worth 2 underlying tokens
 
-    // q what dose this rate do??
+    // what dose this rate do??
+    // a it's the rate between the underlying token and the asset token
     uint256 private s_exchangeRate;
     uint256 public constant EXCHANGE_RATE_PRECISION = 1e18;
     uint256 private constant STARTING_EXCHANGE_RATE = 1e18;
@@ -82,9 +83,10 @@ contract AssetToken is ERC20 {
         address to,
         uint256 amount
     ) external onlyThunderLoan {
-        // q wired ERC20 tokens?
+        // wired ERC20 tokens?
         // what happends if USDC blacklist the thunderloan address?
         // what happends if USDC blacklist the asset token address?
+        // @audit-medium the protocol will be frozen, and that would suck
         i_underlying.safeTransfer(to, amount);
     }
 
@@ -100,7 +102,6 @@ contract AssetToken is ERC20 {
         // newExchangeRate = 1 (4 + 0.5) / 4
         // newExchangeRate = 1.125
 
-        // q what if totalSupply is 0?
         // @audit-gas too many storage reads
         uint256 newExchangeRate = (s_exchangeRate * (totalSupply() + fee)) /
             totalSupply();
