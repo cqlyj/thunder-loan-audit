@@ -170,7 +170,7 @@ contract ThunderLoan is
     //////////////////////////////////////////////////////////////*/
 
     // @audit-info change name to poolFactoryAddress
-    // q what will happen if we deploy the contract and someone else initialize it?
+    // what will happen if we deploy the contract and someone else initialize it?
     // a this would suck
     // They could pick a different tswapAddress
     // @audit-low initializers can be front run
@@ -195,10 +195,8 @@ contract ThunderLoan is
         emit Deposit(msg.sender, token, amount);
         assetToken.mint(msg.sender, mintAmount);
 
-        // @follow-up This seems sus
-        // q why are we calculating the fees of flash loans here?
+        // @audit-high we shouldn't be updating the exchange rate here
         uint256 calculatedFee = getCalculatedFee(token, amount);
-        // q why are we updating the exchange rate here?
         assetToken.updateExchangeRate(calculatedFee);
         token.safeTransferFrom(msg.sender, address(assetToken), amount);
     }
@@ -277,6 +275,7 @@ contract ThunderLoan is
         s_currentlyFlashLoaning[token] = false;
     }
 
+    // @audit-low you cannot use repay to repay a flash loan inside anther flash loan
     function repay(IERC20 token, uint256 amount) public {
         if (!s_currentlyFlashLoaning[token]) {
             revert ThunderLoan__NotCurrentlyFlashLoaning();
@@ -326,6 +325,8 @@ contract ThunderLoan is
         //slither-disable-next-line divide-before-multiply
 
         // q is this correct??
+
+        // @audit-high if the fee is going to be in the token, then the value should reflect that
         uint256 valueOfBorrowedToken = (amount *
             getPriceInWeth(address(token))) / s_feePrecision;
         //slither-disable-next-line divide-before-multiply
