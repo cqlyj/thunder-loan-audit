@@ -91,6 +91,75 @@ function deposit(
     }
 ```
 
+### [H-2] Mixing up variable location causes storage collisions in `ThunderLoan::s_flashLoanFee` and `ThunderLoan::s_currentlyFlashLoaning`, freezing protocol
+
+**Description:**
+
+`ThunderLoan.sol` has two variables in the following order:
+
+```javascript
+    uint256 private s_feePrecision;
+    uint256 private s_flashLoanFee; // 0.3% ETH fee
+```
+
+However, the upgraded contract `ThunderLoanUpgraded,sol` has them in a different order:
+
+```javascript
+    uint256 private s_flashLoanFee; // 0.3% ETH fee
+    uint256 public constant FEE_PRECISION = 1e18;
+```
+
+Due to how Solidity storage works, after the upgrade the `s_flashLoanFee` will have the value of `s_feePrecision`. You cannot adjust the position of storage variables, and removing storage variables for constant variables, breaks the storage locations as well.
+
+**Impact:**
+
+After the upgrade, the `s_flashLoanFee` will have the value of `s_feePrecision`, this means that users who take out flash loans right after an upgrade will be charged the wrong fee.
+
+More importantly, the `s_currentlyFlashLoaning` mapping with storage in the wrong storage slot.
+
+**Proof of Concept:**
+
+<details>
+<summary>PoC</summary>
+
+Place the following into `ThunderLoanTest.t.sol`
+
+```javascript
+import {ThunderLoanUpgraded} from "../../src/upgradedProtocol/ThunderLoanUpgraded.sol";
+.
+.
+.
+
+ function testUpgradedBreaks() public {
+        uint256 feeBeforeUpgrade = thunderLoan.getFee();
+        vm.startPrank(thunderLoan.owner());
+        ThunderLoanUpgraded upgraded = new ThunderLoanUpgraded();
+        thunderLoan.upgradeToAndCall(address(upgraded), "");
+        uint256 feeAfterUpgrade = upgraded.getFee();
+        vm.stopPrank();
+
+        console.log("Fee Before Upgrade: ", feeBeforeUpgrade);
+        console.log("Fee After Upgrade: ", feeAfterUpgrade);
+        assert(feeBeforeUpgrade != feeAfterUpgrade);
+    }
+```
+
+You can also see the storage layout difference by running `forge inspect ThunderLoan storage` and `forge inspect ThunderLoanUpgraded storage`
+
+</details>
+
+**Recommended Mitigation:**
+
+If you must remove the storage variable, leave it as blank as to not mess up the storage slots.
+
+```diff
+-   uint256 private s_flashLoanFee; // 0.3% ETH fee
+-   uint256 public constant FEE_PRECISION = 1e18;
++   uint256 private s_blank; // 0.3% ETH fee
++   uint256 private s_flashLoanFee; // 0.3% ETH fee
++   uint256 public constant FEE_PRECISION = 1e18;
+```
+
 ### [M-1] Using TSwap as price oracle leads to price and oracle manipulation attacks
 
 **Description:**
