@@ -106,7 +106,7 @@ contract ThunderLoan is
 
     // The fee in WEI, it should have 18 decimals. Each flash loan takes a flat fee of the token price.
 
-    // @audit-info this should be constant or immutable
+    // @written-info this should be constant or immutable
     uint256 private s_feePrecision;
     uint256 private s_flashLoanFee; // 0.3% ETH fee
 
@@ -169,11 +169,11 @@ contract ThunderLoan is
                            EXTERNAL FUNCTIONS
     //////////////////////////////////////////////////////////////*/
 
-    // @audit-info change name to poolFactoryAddress
+    // @written-info change name to poolFactoryAddress
     // what will happen if we deploy the contract and someone else initialize it?
     // a this would suck
     // They could pick a different tswapAddress
-    // @audit-low initializers can be front run
+    // @written-low initializers can be front run
     function initialize(address tswapAddress) external initializer {
         __Ownable_init(msg.sender);
         __UUPSUpgradeable_init();
@@ -183,7 +183,7 @@ contract ThunderLoan is
         s_flashLoanFee = 3e15; // 0.3% ETH fee
     }
 
-    // @audit-info where is the natspec?
+    // @written-info where is the natspec?
     function deposit(
         IERC20 token,
         uint256 amount
@@ -195,7 +195,7 @@ contract ThunderLoan is
         emit Deposit(msg.sender, token, amount);
         assetToken.mint(msg.sender, mintAmount);
 
-        // @audit-high we shouldn't be updating the exchange rate here
+        // @written-high we shouldn't be updating the exchange rate here
         uint256 calculatedFee = getCalculatedFee(token, amount);
         assetToken.updateExchangeRate(calculatedFee);
         token.safeTransferFrom(msg.sender, address(assetToken), amount);
@@ -220,7 +220,7 @@ contract ThunderLoan is
         assetToken.transferUnderlyingTo(msg.sender, amountUnderlying);
     }
 
-    // @audit-info where is the natspec?
+    // @written-info where is the natspec?
     function flashloan(
         address receiverAddress,
         IERC20 token,
@@ -248,7 +248,7 @@ contract ThunderLoan is
 
         s_currentlyFlashLoaning[token] = true;
         assetToken.transferUnderlyingTo(receiverAddress, amount);
-        // @audit-info mess up the slither disables
+        // @written-info mess up the slither disables
         // slither-disable-next-line unused-return reentrancy-vulnerabilities-2
         // @follow-up reentrancy
         // @follow-up do we need the return value?
@@ -275,7 +275,7 @@ contract ThunderLoan is
         s_currentlyFlashLoaning[token] = false;
     }
 
-    // @audit-low you cannot use repay to repay a flash loan inside anther flash loan
+    // @written-low you cannot use repay to repay a flash loan inside anther flash loan
     function repay(IERC20 token, uint256 amount) public {
         if (!s_currentlyFlashLoaning[token]) {
             revert ThunderLoan__NotCurrentlyFlashLoaning();
@@ -284,7 +284,7 @@ contract ThunderLoan is
         token.safeTransferFrom(msg.sender, address(assetToken), amount);
     }
 
-    // @audit-info where is the natspec?
+    // @written-info where is the natspec?
     function setAllowedToken(
         IERC20 token,
         bool allowed
@@ -326,7 +326,7 @@ contract ThunderLoan is
 
         // q is this correct??
 
-        // @audit-high if the fee is going to be in the token, then the value should reflect that
+        // @written-high if the fee is going to be in the token, then the value should reflect that
         uint256 valueOfBorrowedToken = (amount *
             getPriceInWeth(address(token))) / s_feePrecision;
         //slither-disable-next-line divide-before-multiply
@@ -338,7 +338,7 @@ contract ThunderLoan is
             revert ThunderLoan__BadNewFee();
         }
 
-        // @audit-low must emit an event
+        // @written-low must emit an event
         s_flashLoanFee = newFee;
     }
 

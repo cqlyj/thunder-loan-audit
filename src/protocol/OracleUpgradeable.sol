@@ -8,7 +8,7 @@ import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Ini
 contract OracleUpgradeable is Initializable {
     address private s_poolFactory;
 
-    // @audit-info need to do zero address check
+    // @written-info need to do zero address check
     function __Oracle_init(
         address poolFactoryAddress
     ) internal onlyInitializing {
@@ -21,13 +21,13 @@ contract OracleUpgradeable is Initializable {
         s_poolFactory = poolFactoryAddress;
     }
 
-    // @audit-info you should use forked tests for this
+    // @written-info you should use forked tests for this
     function getPriceInWeth(address token) public view returns (uint256) {
         address swapPoolOfToken = IPoolFactory(s_poolFactory).getPool(token);
         return ITSwapPool(swapPoolOfToken).getPriceOfOnePoolTokenInWeth();
     }
 
-    // @audit-info redundant function
+    // @written-info redundant function
     function getPrice(address token) external view returns (uint256) {
         return getPriceInWeth(token);
     }
